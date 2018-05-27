@@ -1,0 +1,14 @@
+numpy
+IPython
+pandas
+keras
+gensim
+matplotlib
+sklearn
+h5py
+pydot
+graphviz
+unidecode
+tabulate
+nwalign3
+livelossplot
