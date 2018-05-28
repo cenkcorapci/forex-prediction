@@ -94,7 +94,7 @@ def train():
 
     # Fit
     callbacks_list = [checkpoint]
-    history = model.fit(trainX, trainY, epochs=20, batch_size=512, verbose=1, callbacks=callbacks_list,
+    history = model.fit(trainX, trainY, epochs=200, batch_size=1024, verbose=1, callbacks=callbacks_list,
                         validation_split=0.1)
 
     epoch = len(history.history['loss'])
