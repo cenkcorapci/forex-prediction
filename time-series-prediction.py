@@ -9,7 +9,7 @@ from keras.layers import *
 from keras.models import Sequential
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.preprocessing import MinMaxScaler
-
+from keras.layers.wrappers import *
 from config import *
 
 df = pd.read_csv(eur_usd_loc)
@@ -23,9 +23,6 @@ df.set_index('timestamp', inplace=True)
 df = df.astype(float)
 
 # Add additional features
-df['hour'] = df.index.hour
-df['day'] = df.index.weekday
-df['week'] = df.index.week
 df['momentum'] = df['volume'] * (df['open'] - df['close'])
 df['avg_price'] = (df['low'] + df['high']) / 2
 # df['range'] = df['high'] - df['low']
@@ -60,7 +57,7 @@ t_y = df['close'].values.astype('float32')
 t_y = np.reshape(t_y, (-1, 1))
 y_scaler = y_scaler.fit(t_y)
 
-X, y = create_dataset(dataset, look_back=50)
+X, y = create_dataset(dataset, look_back=30)
 y = y[:, target_index]
 
 train_size = int(len(X) * 0.99)
@@ -71,11 +68,15 @@ testY = y[train_size:]
 
 # create a small LSTM network
 model = Sequential()
-model.add(GRU(50, input_shape=(X.shape[1], X.shape[2]), return_sequences=True))
-model.add(GRU(50, return_sequences=True))
-model.add(GRU(10, return_sequences=True))
+model.add(
+    Bidirectional(LSTM(30, input_shape=(X.shape[1], X.shape[2]),
+                       return_sequences=True),
+                  merge_mode='sum',
+                  weights=None,
+                  input_shape=(X.shape[1], X.shape[2])))
+model.add(LSTM(10, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(GRU(4, return_sequences=False))
+model.add(LSTM(4, return_sequences=False))
 model.add(Dense(4, kernel_initializer='uniform', activation='relu'))
 model.add(Dense(1, kernel_initializer='uniform', activation='relu'))
 
@@ -85,7 +86,7 @@ print(model.summary())
 
 def train():
     # Save the best weight during training.
-    checkpoint = ModelCheckpoint(baseline_wights_loc,
+    checkpoint = ModelCheckpoint(bi_rnn_weights,
                                  monitor='val_mean_squared_error',
                                  verbose=1,
                                  save_best_only=True,
@@ -93,7 +94,7 @@ def train():
 
     # Fit
     callbacks_list = [checkpoint]
-    history = model.fit(trainX, trainY, epochs=30, batch_size=2048, verbose=1, callbacks=callbacks_list,
+    history = model.fit(trainX, trainY, epochs=20, batch_size=512, verbose=1, callbacks=callbacks_list,
                         validation_split=0.1)
 
     epoch = len(history.history['loss'])
@@ -110,7 +111,7 @@ def train():
             plt.show()
     # Baby the model a bit
     # Load the weight that worked the best
-    model.load_weights(baseline_wights_loc)
+    model.load_weights(bi_rnn_weights)
 
     # Train again with decaying learning rate
 
@@ -124,14 +125,14 @@ def train():
     lr_decay = LearningRateScheduler(scheduler)
 
     callbacks_list = [checkpoint, lr_decay]
-    history = model.fit(trainX, trainY, epochs=int(min(epoch / 3, 10)), batch_size=500, verbose=1,
+    history = model.fit(trainX, trainY, epochs=int(min(epoch / 3, 5)), batch_size=500, verbose=1,
                         callbacks=callbacks_list,
                         validation_split=0.1)
 
 
 def benchmark():
     # Benchmark
-    model.load_weights(baseline_wights_loc)
+    model.load_weights(bi_rnn_weights)
 
     pred = model.predict(testX)
     pred = y_scaler.inverse_transform(pred)
