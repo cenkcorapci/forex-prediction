@@ -8,3 +8,5 @@ eur_usd_loc = "/run/media/two-a-day/Elements/academic/datasets/EURUSD-15m-2010-2
 # trained model locations
 baseline_wights_loc = "bin/trained_models/baseline/weights.best.hdf5"
 bi_rnn_weights = "bin/trained_models/bi-rnn/weights.best.hdf5"
+
+
